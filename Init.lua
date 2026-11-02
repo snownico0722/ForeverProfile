@@ -1,6 +1,6 @@
 local _, F = ...
 
-F.version = "0.2.0"
+F.version = "0.2.1"
 
 -- The addon interface intentionally stays in English on every client locale.
 -- Profile names remain user data and are never translated or rewritten.

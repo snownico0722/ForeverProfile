@@ -1,6 +1,6 @@
 # In-game validation for WoW Forever
 
-Observed target: 1.60.1, build 70170, Interface 16001. Record `/fp diagnostics` before each test session because the beta client changes.
+Observed target: 1.60.1, build 70707, Interface 16001. Record `/fp diagnostics` before each test session when the Forever client updates.
 
 - [ ] Cold launch: addon appears, no Lua errors at login, and no automatic changes to graphics settings.
 - [ ] `/fp`, Options → AddOns, and the opening shortcut work. Escape closes the action menu, dialogs, and main window.

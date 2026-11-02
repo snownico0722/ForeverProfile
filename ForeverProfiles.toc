@@ -3,7 +3,7 @@
 ## Notes: Save your graphics settings and switch between them in one click.
 ## IconTexture: Interface\AddOns\ForeverProfiles\Media\Logo
 ## Author: Forever Profiles
-## Version: 0.2.0
+## Version: 0.2.1
 ## SavedVariables: ForeverProfilesDB
 
 Init.lua

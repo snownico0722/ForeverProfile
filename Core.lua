@@ -289,6 +289,7 @@ local refreshPending
 local events = CreateFrame("Frame")
 F.events = events
 events:SetScript("OnEvent", function(_, event, arg)
+    if issecretvalue and issecretvalue(arg) then return end
     if event == "ADDON_LOADED" and arg == addonName then
         local version, build, date, tocVersion = GetBuildInfo()
         F.clientVersion, F.clientBuild, F.interfaceVersion = version, build, tocVersion
@@ -310,7 +311,6 @@ events:SetScript("OnEvent", function(_, event, arg)
         pcall(RegisterSettings)
         F.UI.RefreshQuickBar()
     elseif event == "CVAR_UPDATE" and F.ready and not F.busy then
-        if issecretvalue and issecretvalue(arg) then return end
         if type(arg) ~= "string" or not catalogNames[string.lower(arg)] or refreshPending then return end
         refreshPending = true
         local function Update()

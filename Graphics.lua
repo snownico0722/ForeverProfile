@@ -33,14 +33,14 @@ local settings = {
     {"ComputeEffects", "Compute effects", 0, 4},
     {"OutlineMode", "Outlines", 0, 2},
     {"TextureResolution", "Textures", 0, 3},
-    {"SpellDensity", "Spell density", 0, 2},
+    {"SpellDensity", "Spell density", 0, 5},
     {"ProjectedTextures", "Projected textures", 0, 1},
     {"ViewDistance", "View distance", 0, 9},
     {"EnvironmentDetail", "Environment detail", 0, 9},
     {"GroundClutter", "Ground clutter", 0, 9},
     -- Classic/Forever additions. Absent CVars are ignored at capture time.
     {"Sunshafts", "Sun shafts", 0, 2},
-    {"LightMode", "Secondary lighting", 0, 2},
+    {"LightMode", "Secondary lighting", 0, 3},
     {"PBRLiquidDetail", "Enhanced liquids", 0, 3},
 }
 for _, group in ipairs({"normal", "raid"}) do
@@ -60,7 +60,10 @@ local derived = {
     {"horizonStart", "Horizon start", 0, 20000, false},
     {"horizonClip", "Horizon distance", 0, 20000, false},
     {"terrainLodDist", "Terrain distance", 0, 2000, false},
+    {"terrainLodDiv", "Terrain detail divisor", 0, 2048, false},
     {"wmoLodDist", "Building distance", 0, 2000, false},
+    {"doodadLodScale", "Doodad detail scale", 0, 300, false},
+    {"entityLodDist", "Entity distance", 0, 100, false},
     {"terrainTextureLod", "Terrain texture detail", 0, 10, true},
     {"terrainMipLevel", "Terrain textures", 0, 3, true},
     {"worldBaseMip", "World textures", 0, 3, true},
@@ -69,31 +72,38 @@ local derived = {
     {"environmentDetail", "Environment detail", 0, 200, false},
     {"lodObjectCullSize", "Object culling size", 0, 256, false},
     {"lodObjectCullDist", "Object culling distance", 0, 1000, false},
-    {"lodObjectMinSize", "Object detail", 0, 256, false},
-    {"lodObjectFadeScale", "Object fade distance", 0, 300, false},
+    {"lodObjectMinSize", "Object detail", 0, 1000, false},
+    {"lodObjectFadeScale", "Object fade distance", 0, 5000, false},
     {"groundEffectDensity", "Ground clutter density", 0, 256, true},
     {"groundEffectDist", "Ground clutter distance", 0, 600, false},
     {"groundEffectAnimation", "Ground clutter animation", 0, 1, true},
     {"shadowMode", "Shadow mode", 0, 4, true},
     -- Cascade counts and shadow texture allocations are deliberately left to
-    -- graphicsShadowQuality: low-level values can crash this beta client.
+    -- graphicsShadowQuality: low-level values can crash the Forever client.
     {"shadowSoft", "Soft shadows", 0, 1, true},
     {"shadowBlendCascades", "Shadow blending", 0, 1, true},
+    {"entityShadowFadeScale", "Shadow fade distance", 0, 100, false},
     {"waterDetail", "Liquids", 0, 3, true},
+    {"pbrLiquidDetail", "Enhanced liquids", 0, 3, true},
     {"rippleDetail", "Water ripples", 0, 3, true},
     {"reflectionMode", "Reflections", 0, 3, true},
+    {"reflectionDownscale", "Reflection downscale", 0, 4, true},
     {"refraction", "Refraction", 0, 2, true},
     {"sunShafts", "Sun shafts", 0, 2, true},
     {"SSAO", "Ambient occlusion", 0, 4, true},
     {"DepthBasedOpacity", "Depth effects", 0, 1, true},
     {"OutlineEngineMode", "Outlines", 0, 3, true},
     {"lightMode", "Lighting", 0, 2, true},
-    -- Forever's secondary lighting uses 1..3 in the engine (UI indices 0..2).
+    -- Forever's secondary lighting uses 1..4 in the engine (presets 0..9).
     -- Zero is not a supported disabled state and is never captured or written.
-    {"giQuality", "Secondary lighting", 1, 3, true},
+    {"giQuality", "Secondary lighting", 1, 4, true},
+    {"volumeFog", "Volumetric fog enabled", 0, 1, true},
     {"volumeFogLevel", "Volumetric fog", 0, 4, true},
+    {"particulatesEnabled", "Particulates", 0, 1, true},
+    {"clusteredShading", "Clustered shading", 0, 1, true},
     {"particleDensity", "Particle density", 0, 100, false},
     {"particleMTDensity", "Particle density", 0, 100, false},
+    {"spellClutter", "Spell density", 0, 100, true},
     {"projectedTextures", "Projected textures", 0, 1, true},
     {"weatherDensity", "Weather density", 0, 5, true},
 }
@@ -104,6 +114,9 @@ for _, group in ipairs({"normal", "raid"}) do
     end
 end
 
+Add("spellVisualDensityFilterSetting", "Spell density", "common", 0, 4, true)
+Add("bloomUserMult", "Bloom", "common", 0, 2, false)
+Add("bloomEnable", "Bloom enabled", "common", 0, 1, true)
 Add("RenderScale", "Render scale", "common", 0.1, 2, false)
 Add("ResampleQuality", "Resampling", "common", 0, 3, true, "cvar")
 Add("ResampleSharpness", "Resample sharpness", "common", 0, 2, false)
@@ -111,7 +124,7 @@ Add("ffxAntiAliasingMode", "Image antialiasing", "common", 0, 4, true, "fxaa")
 Add("MSAAQuality", "Multisample antialiasing", "common", 0, 16, true, "msaa")
 Add("msaaAlphaTest", "Multisample alpha test", "common", 0, 1, true, "cvar")
 Add("shadowrt", "Ray traced shadows", "common", 0, 3, true, "cvar")
-Add("LowLatencyMode", "Low latency mode", "common", 0, 4, true, "cvar")
+Add("LowLatencyMode", "Low latency mode", "common", 0, 5, true, "cvar")
 Add("vsync", "Vertical sync", "common", 0, 1, true)
 Add("maxFPS", "Foreground FPS", "common", 0, 1000, true)
 Add("maxFPSBk", "Background FPS", "common", 0, 1000, true)
@@ -216,7 +229,7 @@ function G.Validate(snapshot)
     end
     if count == 0 then return nil, "No graphics options in this profile" end
     -- Existence on the CURRENT client is deliberately not part of validation:
-    -- old profiles remain usable when a beta update removes one option.
+    -- old profiles remain usable when a client update removes one option.
     return true
 end
 
@@ -392,7 +405,7 @@ function G.GetSummary(snapshot)
         {"SSAO", "Ambient occlusion", Choice({"Disabled", "Low", "Medium", "High", "Ultra"})},
         {"DepthEffects", "Depth effects", Choice({"Disabled", "Low", "Medium", "High"})},
         {"ComputeEffects", "Compute effects", Choice({"Disabled", "Low", "Medium", "High", "Ultra"})},
-        {"LightMode", "Secondary lighting", Choice({"Fair", "Good", "High"})},
+        {"LightMode", "Secondary lighting", Choice({"Fair", "Good", "High", "Ultra"})},
         {"TextureResolution", "Textures", Choice({"Low", "Medium", "High", "Ultra"})},
         {"SpellDensity", "Spell density", Choice({"Essential", "Reduced", "All"})},
         {"ProjectedTextures", "Projected textures", Choice({"Disabled", "Enabled"})},

@@ -9,7 +9,7 @@ local function equal(a, b) assert(a == b, tostring(a) .. " ~= " .. tostring(b)) 
 local secret = {}
 issecretvalue = function(value) return value == secret end
 GetLocale = function() return "enUS" end
-GetBuildInfo = function() return "1.60.1", "70170", "", 16001 end
+GetBuildInfo = function() return "1.60.1", "70707", "", 16001 end
 time = function() return 1790899200 end
 SlashCmdList = {}
 local F = {}
@@ -365,7 +365,7 @@ test("Future database and unsupported client never get overwritten", function()
     start(future); assert(not F.ready); equal(ForeverProfilesDB, future)
     GetBuildInfo = function() return "12.0.1", "70000", "", 120001 end
     start(future); assert(not F.ready); equal(ForeverProfilesDB, future); equal(#writes, 0)
-    GetBuildInfo = function() return "1.60.1", "70170", "", 16001 end
+    GetBuildInfo = function() return "1.60.1", "70707", "", 16001 end
 end)
 test("Future module data fits the same copy budget as complete profile records", function()
     reset(); P.Initialize(nil)
@@ -378,5 +378,75 @@ test("Future module data fits the same copy budget as complete profile records",
     assert(P.Get(profile.id)); equal(#P.List(), 1)
     assert(P.Duplicate(profile.id, "Copy still visible"))
 end)
+test("WoW Forever release derived and shared CVars are captured, validated and restored", function()
+    reset()
+    values.pbrliquiddetail = "2"; values.raidpbrliquiddetail = "1"
+    values.spellclutter = "2"; values.raidspellclutter = "1"
+    values.entityshadowfadescale = "25"; values.raidentityshadowfadescale = "15"
+    values.terrainloddiv = "768"; values.raidterrainloddiv = "512"
+    values.doodadlodscale = "150"; values.raiddoodadlodscale = "100"
+    values.entityloddist = "10"; values.raidentityloddist = "8"
+    values.reflectiondownscale = "1"; values.raidreflectiondownscale = "2"
+    values.volumefog = "1"; values.raidvolumefog = "1"
+    values.particulatesenabled = "1"; values.raidparticulatesenabled = "1"
+    values.clusteredshading = "1"; values.raidclusteredshading = "1"
+    values.giquality = "4"; values.raidgiquality = "4"
+    values.graphicslightmode = "3"; values.raidgraphicslightmode = "3"
+    values.lowlatencymode = "5"
+    values.spellvisualdensityfiltersetting = "2"
+    values.bloomusermult = "1"; values.bloomenable = "1"
+    local capture = assert(G.Capture())
+    equal(capture.values.pbrLiquidDetail, "2")
+    equal(capture.values.RAIDpbrLiquidDetail, "1")
+    equal(capture.values.spellClutter, "2")
+    equal(capture.values.RAIDspellClutter, "1")
+    equal(capture.values.entityShadowFadeScale, "25")
+    equal(capture.values.RAIDentityShadowFadeScale, "15")
+    equal(capture.values.terrainLodDiv, "768")
+    equal(capture.values.RAIDterrainLodDiv, "512")
+    equal(capture.values.doodadLodScale, "150")
+    equal(capture.values.RAIDdoodadLodScale, "100")
+    equal(capture.values.entityLodDist, "10")
+    equal(capture.values.RAIDentityLodDist, "8")
+    equal(capture.values.reflectionDownscale, "1")
+    equal(capture.values.RAIDreflectionDownscale, "2")
+    equal(capture.values.volumeFog, "1")
+    equal(capture.values.RAIDvolumeFog, "1")
+    equal(capture.values.particulatesEnabled, "1")
+    equal(capture.values.RAIDparticulatesEnabled, "1")
+    equal(capture.values.clusteredShading, "1")
+    equal(capture.values.RAIDclusteredShading, "1")
+    equal(capture.values.giQuality, "4")
+    equal(capture.values.RAIDgiQuality, "4")
+    equal(capture.values.graphicsLightMode, "3")
+    equal(capture.values.raidGraphicsLightMode, "3")
+    equal(capture.values.LowLatencyMode, "5")
+    equal(capture.values.spellVisualDensityFilterSetting, "2")
+    equal(capture.values.bloomUserMult, "1")
+    equal(capture.values.bloomEnable, "1")
+    assert(not G.Validate(snapshot({giQuality = "0"})))
+    assert(not G.Validate(snapshot({RAIDgiQuality = "0"})))
+    assert(not G.Validate(snapshot({giQuality = "5"})))
+    assert(not G.Validate(snapshot({LowLatencyMode = "6"})))
+    values.pbrliquiddetail = "0"; values.raidpbrliquiddetail = "0"
+    values.spellclutter = "0"; values.spellvisualdensityfiltersetting = "1"
+    values.giquality = "1"; values.raidgiquality = "1"
+    values.lowlatencymode = "1"; values.terrainloddiv = "384"
+    assert(G.Apply(capture).success)
+    equal(values.pbrliquiddetail, "2"); equal(values.raidpbrliquiddetail, "1")
+    equal(values.spellclutter, "2"); equal(values.spellvisualdensityfiltersetting, "2")
+    equal(values.giquality, "4"); equal(values.raidgiquality, "4")
+    equal(values.lowlatencymode, "5"); equal(values.terrainloddiv, "768")
+end)
+test("Secret event arguments are ignored before any comparison", function()
+    start(nil)
+    local uncomparable = setmetatable({}, {__eq = function() error("Secret value compared") end})
+    local oldIsSecret = issecretvalue
+    issecretvalue = function(value) return value == secret or value == uncomparable end
+    F.events.scripts.OnEvent(F.events, "ADDON_LOADED", uncomparable)
+    F.events.scripts.OnEvent(F.events, "CVAR_UPDATE", uncomparable)
+    issecretvalue = oldIsSecret
+end)
 print(string.format("%d behavior tests passed.", passed))
 ForeverProfilesTestContext = {F = F, reset = reset, flush = flush, start = start}
+

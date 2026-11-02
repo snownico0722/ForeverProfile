@@ -1,4 +1,9 @@
-<p align="center"><img src="Media/Logo-512.png" alt="Forever Profiles logo" width="128"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="Media/Logo-Wordmark-Dark.png">
+    <img src="Media/Logo-Wordmark-Light.png" alt="ForeverProfiles" width="480">
+  </picture>
+</p>
 
 # Forever Profiles
 
@@ -6,7 +11,7 @@ An addon for WoW Forever **1.60.1 / Interface 16001**. Save your custom graphics
 
 ## Getting started
 
-Copy this repository's contents into `Interface/AddOns/ForeverProfiles` in your WoW Forever installation. The `ForeverProfiles.toc` file must be directly inside that folder. If you added the addon while WoW was running, restart the game so it discovers the new folder. Enable **Forever Profiles** in the addon list.
+Copy this repository's contents into `_forever_/Interface/AddOns/ForeverProfiles` in your World of Warcraft installation. The `ForeverProfiles.toc` file must be directly inside that folder. If you added the addon while WoW was running, restart the game so it discovers the new folder. Enable **Forever Profiles** in the addon list.
 
 1. Configure your graphics in the game's options and click **Apply**.
 2. Open `/fp`, click **Save current settings**, and name the profile "High quality".
