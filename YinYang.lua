@@ -36,6 +36,27 @@ local function Minimum(snapshot)
             Put(prefix .. suffix, 0)
         end
     end
+    -- A graphicsQuality CVar change can leave the real renderer untouched.
+    -- Write a small set of safe, low-cost engine values too. Never use zero
+    -- indiscriminately (e.g. giQuality requires at least 1). Yang restores
+    -- these CVars from the existing full snapshot, including custom values.
+    local engineLow = {
+        {"farclip", 1600}, {"horizonStart", 800}, {"horizonClip", 1600},
+        {"terrainLodDist", 400}, {"wmoLodDist", 350},
+        {"groundEffectDensity", 16}, {"groundEffectDist", 70},
+        {"environmentDetail", 50},
+        {"shadowMode", 0}, {"shadowSoft", 0}, {"SSAO", 0},
+        {"waterDetail", 0}, {"reflectionMode", 0}, {"refraction", 0},
+        {"rippleDetail", 0}, {"sunShafts", 0},
+        {"particleDensity", 10}, {"particleMTDensity", 10},
+        {"projectedTextures", 0}, {"volumeFog", 0},
+        {"spellClutter", 0}, {"giQuality", 1}, {"textureFilteringMode", 0},
+    }
+    for _, group in ipairs({"", "RAID"}) do
+        for _, option in ipairs(engineLow) do
+            Put(group .. option[1], option[2])
+        end
+    end
     -- These are in-game render/FPS settings, not Windows resolution or refresh.
     Put("RenderScale", 0.1)
     Put("ffxAntiAliasingMode", 0)

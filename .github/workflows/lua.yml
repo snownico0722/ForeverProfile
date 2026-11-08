@@ -1,0 +1,17 @@
+name: Lua smoke tests
+on:
+  pull_request:
+  push:
+    branches: [main, "feat/yinyang-minimap-power-toggle"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update && sudo apt-get install -y lua5.1
+      - name: Syntax and behavior
+        run: |
+          luac5.1 -p Graphics.lua YinYang.lua tests/test_toggle.lua tests/test_graphics_integration.lua
+          lua5.1 tests/test_toggle.lua
+          lua5.1 tests/test_graphics_integration.lua
