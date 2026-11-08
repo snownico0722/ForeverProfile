@@ -1,73 +1,31 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="Media/Logo-Wordmark-Dark.png">
-    <img src="Media/Logo-Wordmark-Light.png" alt="ForeverProfiles" width="480">
-  </picture>
-</p>
+# 阴阳省电 · YinYang Saver (WoW Forever)
 
-# Forever Profiles
+面向 **WoW Forever (Interface 16001)** 的一键挂机省电插件，基于 [Forever Profiles](https://github.com/jBeyondstars/ForeverProfile) 修改。
 
-An addon for WoW Forever **1.60.1 / Interface 16001**. Save your custom graphics settings and switch between configurations using a compact window, a favorites bar, or a keyboard shortcut.
+## 安装及使用
 
-## Getting started
+将整个插件保存为 `_forever_/Interface/AddOns/ForeverProfiles`，确保 `ForeverProfiles.toc` 位于该文件夹下；重启游戏后启用插件。
 
-Copy this repository's contents into `_forever_/Interface/AddOns/ForeverProfiles` in your World of Warcraft installation. The `ForeverProfiles.toc` file must be directly inside that folder. If you added the addon while WoW was running, restart the game so it discovers the new folder. Enable **Forever Profiles** in the addon list.
+- **阳（默认）**：保持你的正常画质。
+- **点击小地图左上侧阴阳图标 → 阴**：自动备份当前画质，将普通与团队画质调为最低档，同步降低远景、植被、阴影、粒子等实际引擎参数，再降低渲染比例、抗锯齿，并把前后台 FPS 都限制为 **8**。
+- **再次点击 → 阳**：恢复切换前保存的画质和 FPS。
 
-1. Configure your graphics in the game's options and click **Apply**.
-2. Open `/fp`, click **Save current settings**, and name the profile "High quality".
-3. Configure and apply your performance settings in the game, then save a second profile.
-4. Select the profile you want and click **Apply profile**.
-5. Add up to three favorites with the **Favorite** button. Open the **Favorite bar** tab and enable **Show favorite quick bar** to switch with one click.
+不需要保存两套配置；没有设置窗口、收藏栏、快捷键或常驻定时轮询。不会调整 Windows 分辨率、显示器刷新率或电源计划。
 
-Selecting a profile lets you inspect it. Only applying a profile changes your game settings. Creating or duplicating a profile captures or copies settings without applying them. Profiles are not automatically applied at login.
+## 备份与恢复
 
-## Features
+原始画质快照存入 `ForeverYinYangDB`。正常退出游戏或 `/reload` 会保存快照，下次登录后可以继续点击阴阳按钮恢复。游戏异常结束时，最近的 SavedVariables 改动可能丢失。
 
-- A WoW-style window with charcoal surfaces, metallic edges, gold headings, beveled buttons, and a red **Apply profile** action. **Profiles** and **Favorite bar** tabs keep profile management separate from bar preferences.
-- Up to **40 profiles**, with renaming, duplication, updating, and deletion. Updating or deleting a profile requires confirmation.
-- General graphics settings, separate raid/battleground settings, and the native raid settings toggle saved together, when exposed by the client.
-- Render scale, antialiasing, vertical sync, and FPS limits supported by the client.
-- A movable bar with **3 favorites**: drag its handle or background to move it. The **FP** button opens the main window.
-- A **Lock favorite bar** checkbox in `/fp` → **Favorite bar**: fixes the bar's position and hides its drag handle while keeping its buttons usable. Uncheck it to move the bar again. The lock setting is saved between sessions.
-- Bar scale adjustable from **60 to 180%** in the main window or with the mouse wheel over its handle. Buttons and text scale together. Position and scale are saved between sessions.
-- **Independent width and height** in `/fp`: width from 160 to 1,000 and height from 28 to 120. Buttons share the available space without stretching the text. Dimensions are set before the overall bar scale and saved between sessions. **Auto width** restores sizing based on the number of favorites. On small screens, each dimension is constrained separately to the available space.
-- **Restore previous settings** returns to the configuration captured before the last switch. This temporary backup lasts for the current session; `/reload` or restarting the game clears it.
-- **Active**, **Modified**, and **Applied partially** statuses based on current values. After a partial application, the profile shows settings that differ, with their reasons in tooltips.
-- A movable window that adapts to small screens and closes with Escape.
-- The interface, dialogs, tooltips, shortcut labels, and messages stay **in English on every client locale**. Existing profile names are preserved as entered.
-- Configurable shortcuts under **Options → Key Bindings → Forever Profiles** for the window, three favorites, and restoration. An entry is also available under **Options → AddOns**.
+若部分设置被客户端或另一个插件拒绝，会在聊天框提示。恢复没有完全成功时原始备份不会删除，再点图标即可重试。插件只对当前客户端确实提供的图形项进行操作；游戏内实际效果及功耗仍需在 WoW Forever 客户端测试。
 
-## Commands
+## 文件
 
-| Command | Action |
-| --- | --- |
-| `/fp` or `/foreverprofiles` | Open or close the window |
-| `/fp save High quality` | Save current settings under this name |
-| `/fp apply High quality` | Apply the named profile |
-| `/fp restore` | Restore the configuration preceding the last switch |
-| `/fp quick` | Show or hide the favorites bar |
-| `/fp list` | List profiles and their statuses |
-| `/fp diagnostics` | Show the version and number of accessible settings |
+- `Graphics.lua`：沿用原插件的图形 CVars 白名单、快照及写入校验。
+- `YinYang.lua`：阴阳双态、小地图按钮与跨重载恢复。
+- `Media/YinYang.tga`：自带阴阳图案。
+- `tests/test_toggle.lua`：无游戏客户端的状态切换冒烟测试。
+- `tests/test_graphics_integration.lua`：加载真实 `Graphics.lua`，验证底层渲染参数与完整还原。
 
-## Storage and compatibility
+原有多画质管理界面、收藏栏及快捷键已从插件中移除。
 
-Profiles and positions are stored in `ForeverProfilesDB`, an account-wide SavedVariable shared by characters on this installation. WoW writes this data during `/reload` or a normal logout. A crash or forced shutdown can lose recent changes.
-
-The graphics engine uses an explicit list of supported settings, bounded values, verification after all writes, and a second delayed check. It skips unavailable options when capturing settings and reports options that become unavailable when applying a profile. Settings enforced by another addon, such as Leatrix Plus's weather settings, may therefore appear as differences.
-
-Resolution, monitor, fullscreen, graphics backend, GPU, and HDR options are outside this version's scope. Experimental CVars and direct shadow resolution/cascade settings are not written. No minimum-quality preset is imposed: profiles restore your choices, including combat effects.
-
-Changes in combat are attempted through the standard APIs, and client refusals are reported. Refused changes are not silently applied later. Reading back a matching value confirms the configuration value; whether an option also requires a graphics engine reload still needs to be verified in the Forever client.
-
-## Development and testing
-
-- `Init.lua`: version, English text helpers, and shortcut labels.
-- `Graphics.lua`: settings catalog, capture, validation, application, comparison, and summary.
-- `Profiles.lua`: versioned storage and profile operations.
-- `UI.lua`: window, dialogs, and favorites bar.
-- `Core.lua`: lifecycle, orchestration, restoration, commands, and options integration.
-- `Bindings.xml`: shortcuts discovered automatically by the game's dedicated binding loader. It uses a `<Bindings>` root without the UI namespace and must not be listed in the TOC.
-
-From the repository folder, run `python tests/run.py`. The runner requires Python and `lupa` with its Lua 5.1 runtime (`python -m pip install lupa`). It checks Lua 5.1 syntax, TOC files, binding XML, and behavior in a simulated client. Tests do not change your game settings. The optional preview (`--preview preview.png`) also requires Pillow and Windows fonts.
-
-Real-client validation of the interface, graphics effects, combat behavior, and persistence remains to be completed using the [in-game checklist](tests/IN_GAME.md).
+> 原项目未包含明确许可证。此仓库保留 GitHub Fork 关系；若计划独立公开再分发，建议先征得原作者授权。
