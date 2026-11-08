@@ -2,7 +2,7 @@ name: Lua smoke tests
 on:
   pull_request:
   push:
-    branches: [main, "feat/yinyang-minimap-power-toggle"]
+    branches: [main]
 jobs:
   test:
     runs-on: ubuntu-latest
