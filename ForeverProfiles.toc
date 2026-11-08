@@ -1,13 +1,9 @@
 ## Interface: 16001
-## Title: Forever Profiles
-## Notes: Save your graphics settings and switch between them in one click.
-## IconTexture: Interface\AddOns\ForeverProfiles\Media\Logo
-## Author: Forever Profiles
-## Version: 0.2.1
-## SavedVariables: ForeverProfilesDB
+## Title: YinYang Saver |cffdec56b(阴阳省电)|r
+## Notes: One-click low-power graphics / 8 FPS toggle for WoW Forever.
+## Author: snownico0722 (based on Forever Profiles)
+## Version: 1.0.0
+## SavedVariables: ForeverYinYangDB
 
-Init.lua
 Graphics.lua
-Profiles.lua
-UI.lua
-Core.lua
+YinYang.lua
