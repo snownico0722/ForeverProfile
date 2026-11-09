@@ -1,90 +1,115 @@
--- Headless smoke test for the minimap toggle. Run: texlua tests/test_toggle.lua
-local addon = "ForeverProfiles"
-local frames = {}
+-- UI/state smoke test; the real Graphics.lua is covered by the integration test.
+local clock, cursorX, cursorY, clampFPS = 0, 10, 20, false
+function GetTime() return clock end
+function GetCursorPosition() return cursorX, cursorY end
+function IsWindowFocused() return true end
+local frames, byName = {}, {}
 local state = {
-    graphicsQuality = "8", RAIDgraphicsQuality = "6", graphicsShadowQuality = "3",
-    RenderScale = "1.000000", maxFPS = "120", maxFPSBk = "30",
-    useMaxFPS = "0", useMaxFPSBk = "1", useTargetFPS = "1", vsync = "1",
-    ffxAntiAliasingMode = "2", MSAAQuality = "4,0",
+    graphicsQuality = "7", RAIDgraphicsQuality = "6",
+    graphicsShadowQuality = "4", graphicsViewDistance = "6",
+    farclip = "7500", RAIDfarclip = "6500", projectedTextures = "1",
+    RenderScale = "1.0", maxFPS = "120", maxFPSBk = "45",
+    useMaxFPS = "0", useMaxFPSBk = "1", useTargetFPS = "1",
 }
-local applyCount = 0
-local partialRestore = false
-local function Copy(t)
-    local out = {}
-    for k, v in pairs(t) do out[k] = v end
-    return out
-end
-local G = {}
-function G.Capture() return {values=Copy(state)} end
-function G.Validate(s) return type(s)=="table" and type(s.values)=="table" and next(s.values)~=nil end
-function G.Apply(s)
-    applyCount = applyCount + 1
-    for k, v in pairs(s.values) do
-        if not (partialRestore and v == "120" and k == "maxFPS") then state[k] = v end
-    end
-    return {success=true}
-end
-function G.Compare(s)
-    local total, matched = 0, 0
-    for k, v in pairs(s.values) do
-        total = total + 1
-        if (tonumber(v) and tonumber(state[k]) and tonumber(v) == tonumber(state[k])) or state[k] == v then
-            matched = matched + 1
-        end
-    end
-    return {total=total, matched=matched, matches=matched==total}
-end
-local F = {Graphics=G}
-local function Texture()
-    return setmetatable({}, {__index=function() return function() end end})
-end
-local function Frame(name)
-    local obj = {scripts={}, name=name}
-    setmetatable(obj, {__index=function(_, method)
-        if method == "CreateTexture" then return function() return Texture() end end
-        if method == "GetFrameLevel" then return function() return 1 end end
-        return function(self, ...)
-            if method == "SetScript" then self.scripts[select(1,...)] = select(2,...) end
-        end
-    end})
-    frames[#frames+1] = obj
-    if name then frames[name] = obj end
-    return obj
-end
-Minimap = Frame("Minimap")
-function CreateFrame(_,name) return Frame(name) end
-C_Timer = {After=function(_,func) func() end}
-DEFAULT_CHAT_FRAME={AddMessage=function() end}
-local function Boot()
-    assert(loadfile("YinYang.lua"))(addon, F)
-    local loadFrame = frames[#frames]
-    loadFrame.scripts.OnEvent(loadFrame, "ADDON_LOADED", addon)
-    return frames["ForeverYinYangButton"]
+local function Copy(source)
+    local target = {}
+    for k, v in pairs(source) do target[k] = v end
+    return target
 end
 local original = Copy(state)
-local button = Boot()
-assert(type(button.scripts.OnClick)=="function", "minimap toggle missing")
-assert(ForeverYinYangDB.active==false)
-button.scripts.OnClick()
-assert(ForeverYinYangDB.active==true, "Yin not enabled")
-assert(state.graphicsQuality=="0" and state.RAIDgraphicsQuality=="0")
-assert(state.graphicsShadowQuality=="0")
-assert(state.RenderScale=="0.1")
-assert(state.maxFPS=="8" and state.maxFPSBk=="8")
-assert(state.useMaxFPS=="1" and state.useMaxFPSBk=="1")
-assert(state.useTargetFPS=="0")
-assert(ForeverYinYangDB.original.values.maxFPS == "120", "original settings overwritten")
--- Simulate /reload: restore state comes from saved DB, not a transient variable.
-button = Boot()
-assert(ForeverYinYangDB.active==true)
-partialRestore = true
-button.scripts.OnClick()
-assert(ForeverYinYangDB.active==true and ForeverYinYangDB.original, "failed restore lost backup")
-partialRestore = false
-button.scripts.OnClick()
-assert(ForeverYinYangDB.active==false and ForeverYinYangDB.original==nil)
-for key, value in pairs(original) do
-    assert(state[key] == value, "failed to restore " .. key)
+local G = {}
+local partialRestore = false
+function G.Capture() return {values = Copy(state)} end
+function G.Validate(snapshot)
+    return type(snapshot)=="table" and type(snapshot.values)=="table" and next(snapshot.values)~=nil
 end
-assert(applyCount == 3)
-print("PASS: Yin/Yang toggle, 8 FPS, persistence, partial-restore retry")
+function G.Apply(snapshot)
+    for k, value in pairs(snapshot.values) do
+        if not (partialRestore and k=="maxFPS" and value=="120") then
+            state[k] = clampFPS and (k=="maxFPS" or k=="maxFPSBk") and value=="3" and "8" or value
+        end
+    end
+    return {success = true}
+end
+function G.GetValue(name) return state[name] end
+function G.Compare(snapshot)
+    local matched,total=0,0
+    for k,v in pairs(snapshot.values) do
+        total=total+1
+        if tostring(state[k])==tostring(v) then matched=matched+1 end
+    end
+    return {total=total,matched=matched,matches=matched==total}
+end
+local function NewFrame(name)
+    local frame = {scripts={}}
+    setmetatable(frame,{__index=function(t,method)
+        if method=="GetFrameLevel" then return function() return 1 end end
+        if method=="CreateTexture" then return function()
+            return setmetatable({},{__index=function()return function()end end})
+        end end
+        return function(self,...)
+            if method=="SetScript" then self.scripts[select(1,...)]=select(2,...) end
+        end
+    end})
+    frames[#frames+1]=frame
+    if name then byName[name]=frame end
+    return frame
+end
+Minimap=NewFrame("Minimap")
+UIParent=NewFrame("UIParent")
+function CreateFrame(_, name) return NewFrame(name) end
+C_Timer={After=function(_,f)f()end}
+DEFAULT_CHAT_FRAME={AddMessage=function()end}
+local F={Graphics=G}
+local function Boot()
+    assert(loadfile("YinYang.lua"))("ForeverProfiles",F)
+    local root=frames[#frames]
+    root.scripts.OnEvent(root,"ADDON_LOADED","ForeverProfiles")
+    local keyListener=frames[#frames]
+    return byName.ForeverYinYangButton,root,keyListener
+end
+local button,root,keys=Boot()
+button.scripts.OnClick()
+assert(ForeverYinYangDB.active and ForeverYinYangDB.tier=="standard")
+assert(state.graphicsQuality=="1" and state.RenderScale=="0.35")
+assert(state.maxFPS=="20" and state.maxFPSBk=="10")
+clock=119
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="standard")
+clock=120
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="extreme" and state.maxFPS=="3" and state.maxFPSBk=="3")
+assert(state.RenderScale=="0.1")
+cursorX=45
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="standard" and state.maxFPS=="20")
+clock=200
+root.scripts.OnEvent(root,"GLOBAL_MOUSE_DOWN","LeftButton")
+clock=319
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="standard")
+clock=320
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="extreme")
+keys.scripts.OnKeyDown(keys,"W")
+assert(ForeverYinYangDB.tier=="standard")
+partialRestore=true
+button.scripts.OnClick()
+assert(ForeverYinYangDB.active and ForeverYinYangDB.original)
+partialRestore=false
+button.scripts.OnClick()
+assert(not ForeverYinYangDB.active and ForeverYinYangDB.original==nil)
+for k,v in pairs(original) do assert(state[k]==v,"failed to restore "..k)end
+clampFPS=true
+clock=500
+button.scripts.OnClick()
+clock=620
+root.scripts.OnUpdate(root,0.25)
+assert(ForeverYinYangDB.tier=="extreme" and ForeverYinYangDB.extremeFPS==8)
+assert(state.maxFPS=="8" and state.maxFPSBk=="8")
+button,root,keys=Boot()
+assert(ForeverYinYangDB.tier=="extreme")
+button.scripts.OnClick()
+assert(not ForeverYinYangDB.active)
+for k,v in pairs(original) do assert(state[k]==v,"failed reload restore "..k)end
+print("PASS: 20/10 staging, idle timer, wake, FPS fallback, snapshot restore and reload")

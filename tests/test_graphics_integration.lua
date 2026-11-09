@@ -2,6 +2,11 @@
 -- This integration test uses the production Graphics.lua, not a mock of it.
 local addon = "ForeverProfiles"
 local F = {}
+local clock = 0
+local cursorX, cursorY = 10, 20
+function GetTime() return clock end
+function GetCursorPosition() return cursorX, cursorY end
+function IsWindowFocused() return true end
 local cvars = {
     graphicsQuality = "8", RAIDgraphicsQuality = "6",
     graphicsShadowQuality = "4", raidGraphicsShadowQuality = "3",
@@ -66,6 +71,7 @@ local function Frame(name)
     return frame
 end
 Minimap = Frame("Minimap")
+UIParent = Frame("UIParent")
 function CreateFrame(_, name) return Frame(name) end
 C_Timer = {After = function(_, callback) callback() end}
 DEFAULT_CHAT_FRAME = {AddMessage = function() end}
@@ -73,17 +79,26 @@ local function Boot()
     assert(loadfile("YinYang.lua"))(addon, F)
     local loadingFrame = frames[#frames]
     loadingFrame.scripts.OnEvent(loadingFrame, "ADDON_LOADED", addon)
-    return assert(frames.ForeverYinYangButton).scripts.OnClick
+    return assert(frames.ForeverYinYangButton).scripts.OnClick, loadingFrame, frames[#frames]
 end
-local click = Boot()
+local click,root,keyboard = Boot()
 assert(not ForeverYinYangDB.active)
-click() -- Yang -> Yin
-assert(ForeverYinYangDB.active)
-assert(cvars.graphicsQuality == "0" and cvars.RAIDgraphicsQuality == "0")
-assert(cvars.maxFPS == "8" and cvars.maxFPSBk == "8")
-assert(cvars.useTargetFPS == "0" and cvars.RenderScale == "0.1")
-
--- This fails if only graphicsQuality and the Graphics panel sliders are changed.
+click() -- Yang -> standard Yin
+assert(ForeverYinYangDB.active and ForeverYinYangDB.tier == "standard")
+assert(cvars.graphicsQuality == "1" and cvars.RAIDgraphicsQuality == "1")
+assert(cvars.maxFPS == "20" and cvars.maxFPSBk == "10")
+assert(cvars.useTargetFPS == "0" and cvars.RenderScale == "0.35")
+assert(cvars.farclip == "2200" and cvars.RAIDfarclip == "2200")
+assert(cvars.groundEffectDensity == "24" and cvars.RAIDgroundEffectDensity == "24")
+assert(cvars.projectedTextures == "1")
+clock = 119
+root.scripts.OnUpdate(root, 0.25)
+assert(ForeverYinYangDB.tier == "standard")
+clock = 120
+root.scripts.OnUpdate(root, 0.25)
+assert(ForeverYinYangDB.tier == "extreme")
+assert(cvars.maxFPS == "3" and cvars.maxFPSBk == "3")
+assert(cvars.RenderScale == "0.1")
 local engineLow = {
     farclip = "1600", RAIDfarclip = "1600",
     horizonStart = "800", RAIDhorizonStart = "800",
@@ -100,13 +115,14 @@ for name, value in pairs(engineLow) do
     assert(cvars[name] == value, name .. ": engine CVar remained " .. tostring(cvars[name]))
 end
 assert(#writes >= 15, "graphics engine values were not written")
-
--- Simulated /reload: original settings are backed by SavedVariables.
-click = Boot()
-assert(ForeverYinYangDB.active)
+keyboard.scripts.OnKeyDown(keyboard, "W")
+assert(ForeverYinYangDB.tier == "standard" and cvars.maxFPS == "20")
+-- Reloading while Yin is active must not lose the original graphics snapshot.
+click, root, keyboard = Boot()
+assert(ForeverYinYangDB.active and ForeverYinYangDB.tier == "standard")
 click() -- Yin -> Yang
 assert(not ForeverYinYangDB.active and ForeverYinYangDB.original == nil)
 for name, value in pairs(original) do
     assert(cvars[name] == value, "failed to restore " .. name)
 end
-print("PASS: production Graphics.lua, engine CVars, 8 FPS, reload and exact restore")
+print("PASS: production Graphics.lua, standard/extreme CVars, input wake and exact restore")
